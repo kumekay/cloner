@@ -56,13 +56,9 @@ def clone_or_cd(url: str) -> Path:
 
     target_dir.parent.mkdir(parents=True, exist_ok=True)
 
-    result = subprocess.run(
-        ["git", "clone", url, str(target_dir)],
-        capture_output=True,
-        text=True,
-    )
+    result = subprocess.run(["git", "clone", url, str(target_dir)])
 
     if result.returncode != 0:
-        raise RuntimeError(f"git clone failed: {result.stderr}")
+        raise RuntimeError("git clone failed")
 
     return target_dir
