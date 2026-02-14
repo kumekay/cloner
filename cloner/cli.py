@@ -1,5 +1,6 @@
 import sys
 
+from . import __version__
 from .core import clone_or_cd
 
 SHELL_FUNCTION = """
@@ -24,6 +25,10 @@ def main():
 
     if sys.argv[1] == "--init":
         print(SHELL_FUNCTION.strip())
+        sys.exit(0)
+
+    if sys.argv[1] == "--version":
+        print(__version__)
         sys.exit(0)
 
     url = sys.argv[1]
