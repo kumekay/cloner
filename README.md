@@ -5,10 +5,10 @@ A minimal CLI tool for cloning git repositories into a structured workspace dire
 ## Installation
 
 ```bash
-uv tool install .
+uv tool install git+https://github.com/kumekay/cloner
 ```
 
-Or from the directory:
+Or from a local clone:
 
 ```bash
 uv tool install /path/to/cloner
@@ -35,6 +35,10 @@ The tool clones the repository into your workspace and automatically changes to 
 ### Examples
 
 ```bash
+# GitHub shorthand (uses SSH)
+clone kumekay/cloner
+# → clones to ~/p/kumekay/cloner and cds there
+
 # HTTPS
 clone https://github.com/kumekay/kumekay.com.git
 # → clones to ~/p/kumekay/kumekay.com and cds there
@@ -68,6 +72,7 @@ Default: `~/p`
 
 | Format | Example |
 |--------|---------|
+| GitHub shorthand | `owner/repo` (uses SSH) |
 | HTTPS | `https://github.com/owner/repo.git` |
 | HTTPS (no .git) | `https://github.com/owner/repo` |
 | SSH | `git@github.com:owner/repo.git` |
