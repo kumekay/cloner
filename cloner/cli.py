@@ -5,8 +5,8 @@ from .core import clone_or_cd
 
 SHELL_FUNCTION = """
 clone() {
-    if [ "$1" = "--init" ]; then
-        command clone --init
+    if [ "$1" = "--init" ] || [ "$1" = "--version" ]; then
+        command clone "$@"
         return
     fi
     local dir
