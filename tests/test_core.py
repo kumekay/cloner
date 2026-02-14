@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from cloner.core import parse_git_url
+from cloner.core import normalize_url, parse_git_url
 
 
 def test_parse_https_url():
@@ -36,3 +36,13 @@ def test_parse_deeply_nested():
 def test_parse_trailing_slash():
     result = parse_git_url("https://github.com/kumekay/repo.git/")
     assert result == Path("kumekay/repo")
+
+
+def test_normalize_github_shorthand():
+    result = normalize_url("kumekay/cloner")
+    assert result == "git@github.com:kumekay/cloner.git"
+
+
+def test_normalize_nested_shorthand():
+    result = normalize_url("org/team/repo")
+    assert result == "git@github.com:org/team/repo.git"

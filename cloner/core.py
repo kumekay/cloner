@@ -4,6 +4,20 @@ import subprocess
 from pathlib import Path
 
 
+def normalize_url(url: str) -> str:
+    """
+    Normalize URL, converting GitHub shorthand to SSH URL.
+
+    GitHub shorthand: org/repo -> git@github.com:org/repo.git
+    """
+    url = url.strip()
+
+    if "/" in url and not url.startswith(("https://", "http://", "ssh://", "git@")):
+        return f"git@github.com:{url}.git"
+
+    return url
+
+
 def parse_git_url(url: str) -> Path:
     """
     Parse a git URL and return the relative path for cloning.
@@ -47,6 +61,7 @@ def clone_or_cd(url: str) -> Path:
     Clone a repository or return path if it already exists.
     Returns the path to the repository.
     """
+    url = normalize_url(url)
     rel_path = parse_git_url(url)
     workspace = get_workspace()
     target_dir = workspace / rel_path
