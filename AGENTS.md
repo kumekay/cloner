@@ -41,6 +41,14 @@ uv run pre-commit run --all-files
 - Use ruff for linting and formatting
 - No external dependencies in runtime code (keep it stdlib-only)
 
+## Development Workflow
+
+- **TDD**: Always use red/green TDD - write failing test first, then implement
+- **README**: Update README.md when adding or changing features
+- **Version bumps**: Update version in BOTH places:
+  1. `cloner/__init__.py` (`__version__`)
+  2. `pyproject.toml` (`version` field)
+
 ## Architecture
 
 ```
