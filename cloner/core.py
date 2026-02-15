@@ -27,27 +27,37 @@ def parse_git_url(url: str) -> Path:
     - SSH: git@github.com:owner/repo.git
     - SSH with port: ssh://git@host:port/owner/repo.git
     - Nested groups (GitLab): git@gitlab.com:group/subgroup/repo.git
+
+    Non-GitHub hosts get prefixed with hostname, e.g. codeberg.org/uzu/strudel
     """
     url = url.strip()
 
     if url.endswith("/"):
         url = url[:-1]
 
+    hostname = None
     if url.startswith(("https://", "http://")):
-        path = url.split("/", 3)[-1]
+        parts = url.split("/", 3)
+        hostname = parts[2]
+        path = parts[3] if len(parts) > 3 else ""
     elif url.startswith("ssh://"):
-        match = re.match(r"ssh://[^/]+/(.+)", url)
+        match = re.match(r"ssh://([^@]+@)?([^/:]+)(:\d+)?/(.+)", url)
         if match:
-            path = match.group(1)
+            hostname = match.group(2)
+            path = match.group(4)
         else:
             raise ValueError(f"Invalid SSH URL: {url}")
     elif ":" in url and "@" in url:
+        hostname = url.split("@", 1)[1].split(":")[0]
         path = url.split(":", 1)[1]
     else:
         raise ValueError(f"Unsupported URL format: {url}")
 
     if path.endswith(".git"):
         path = path[:-4]
+
+    if hostname and hostname != "github.com":
+        path = f"{hostname}/{path}"
 
     return Path(path)
 

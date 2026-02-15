@@ -20,17 +20,27 @@ def test_parse_ssh_url():
 
 def test_parse_ssh_nested_groups():
     result = parse_git_url("git@gitlab.com:group/subgroup/repo.git")
-    assert result == Path("group/subgroup/repo")
+    assert result == Path("gitlab.com/group/subgroup/repo")
 
 
 def test_parse_ssh_with_port():
     result = parse_git_url("ssh://git@gitea.example.com:2222/org/repo.git")
-    assert result == Path("org/repo")
+    assert result == Path("gitea.example.com/org/repo")
 
 
 def test_parse_deeply_nested():
     result = parse_git_url("git@gitlab.com:org/team/project/repo.git")
-    assert result == Path("org/team/project/repo")
+    assert result == Path("gitlab.com/org/team/project/repo")
+
+
+def test_parse_codeberg_https():
+    result = parse_git_url("https://codeberg.org/uzu/strudel.git")
+    assert result == Path("codeberg.org/uzu/strudel")
+
+
+def test_parse_codeberg_ssh():
+    result = parse_git_url("git@codeberg.org:uzu/strudel.git")
+    assert result == Path("codeberg.org/uzu/strudel")
 
 
 def test_parse_trailing_slash():

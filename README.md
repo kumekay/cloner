@@ -49,11 +49,15 @@ clone git@github.com:kumekay/kumekay.com.git
 
 # GitLab with nested groups
 clone git@gitlab.com:org/team/project/repo.git
-# → clones to ~/p/org/team/project/repo and cds there
+# → clones to ~/p/gitlab.com/org/team/project/repo and cds there
+
+# Codeberg (non-GitHub hosts get hostname prefix)
+clone https://codeberg.org/uzu/strudel.git
+# → clones to ~/p/codeberg.org/uzu/strudel and cds there
 
 # Self-hosted Gitea with custom port
 clone ssh://git@gitea.example.com:2222/myorg/myrepo.git
-# → clones to ~/p/myorg/myrepo and cds there
+# → clones to ~/p/gitea.example.com/myorg/myrepo and cds there
 ```
 
 If the repository already exists locally, `clone` will just `cd` to it without re-cloning.
@@ -83,8 +87,8 @@ Works with GitHub, GitLab, Gitea (including self-hosted), and any other git host
 
 ## How It Works
 
-1. Parses the git URL to extract the path (owner/repo or nested groups)
-2. Constructs the target directory: `$CLONER_WORKSPACE/<path>`
+1. Parses the git URL to extract hostname and path (owner/repo or nested groups)
+2. Constructs the target directory: `$CLONER_WORKSPACE/<path>` for GitHub, `$CLONER_WORKSPACE/<hostname>/<path>` for others
 3. If directory exists with `.git` inside → just return the path
 4. Otherwise → `git clone <url> <target>` and return the path
 5. The shell function handles the `cd`

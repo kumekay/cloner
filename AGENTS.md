@@ -77,7 +77,8 @@ Users add `eval "$(clone --init)"` to their shell config.
 
 ## Important Notes
 
-- No hostname in the path - just owner/repo structure
+- GitHub repos: no hostname prefix (just owner/repo)
+- Non-GitHub repos: include hostname prefix (e.g., codeberg.org/owner/repo)
 - If repo exists locally (has `.git` dir), skip clone and just cd
 - Support nested groups for GitLab (e.g., `group/subgroup/repo`)
 - Support custom SSH ports for self-hosted Gitea
