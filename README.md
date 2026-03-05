@@ -64,13 +64,39 @@ If the repository already exists locally, `clone` will just `cd` to it without r
 
 ## Configuration
 
-Set the `CLONER_WORKSPACE` environment variable to customize the base directory:
+The tool can be configured via environment variables or a configuration file in `~/.config/cloner.toml`.
 
-```bash
-export CLONER_WORKSPACE=~/projects
+### Default Workspace
+
+The default workspace directory (default: `~/p`) can be set in two ways:
+
+1. **Environment Variable**:
+   ```bash
+   export CLONER_WORKSPACE=~/projects
+   ```
+2. **Configuration File** (`~/.config/cloner.toml`):
+   ```toml
+   workspace = "~/projects"
+   ```
+
+Priority: Environment variable > Config file > Default (`~/p`).
+
+### Custom Destination Paths
+
+You can configure specific destination paths for different hosts or organizations in `~/.config/cloner.toml`:
+
+```toml
+"github.com/myorg" = "~/work"
+"github.com" = "~/projects"
+"git.example.com" = "~/self-hosted"
 ```
 
-Default: `~/p`
+With this config:
+- `clone myorg/repo` → clones to `~/work/repo`
+- `clone https://github.com/other/project.git` → clones to `~/projects/other/project`
+- `clone ssh://git@git.example.com:2222/user/test.git` → clones to `~/self-hosted/user/test`
+
+The tool uses the longest prefix match to determine the destination.
 
 ## Supported URL Formats
 
