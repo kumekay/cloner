@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 
 
@@ -18,17 +19,9 @@ def normalize_url(url: str) -> str:
     return url
 
 
-def parse_git_url(url: str) -> Path:
+def parse_git_url_info(url: str) -> tuple[str | None, str]:
     """
-    Parse a git URL and return the relative path for cloning.
-
-    Supported formats:
-    - HTTPS: https://github.com/owner/repo.git
-    - SSH: git@github.com:owner/repo.git
-    - SSH with port: ssh://git@host:port/owner/repo.git
-    - Nested groups (GitLab): git@gitlab.com:group/subgroup/repo.git
-
-    Non-GitHub hosts get prefixed with hostname, e.g. codeberg.org/uzu/strudel
+    Parse a git URL and return (hostname, path).
     """
     url = url.strip()
 
@@ -56,14 +49,73 @@ def parse_git_url(url: str) -> Path:
     if path.endswith(".git"):
         path = path[:-4]
 
+    return hostname, path
+
+
+def parse_git_url(url: str) -> Path:
+    """
+    Parse a git URL and return the relative path for cloning.
+
+    Supported formats:
+    - HTTPS: https://github.com/owner/repo.git
+    - SSH: git@github.com:owner/repo.git
+    - SSH with port: ssh://git@host:port/owner/repo.git
+    - Nested groups (GitLab): git@gitlab.com:group/subgroup/repo.git
+
+    Non-GitHub hosts get prefixed with hostname, e.g. codeberg.org/uzu/strudel
+    """
+    hostname, path = parse_git_url_info(url)
+
     if hostname and hostname != "github.com":
         path = f"{hostname}/{path}"
 
     return Path(path)
 
 
+def load_config() -> dict[str, str]:
+    config_home = os.environ.get("XDG_CONFIG_HOME")
+    if config_home:
+        config_path = Path(config_home) / "cloner.toml"
+    else:
+        config_path = Path.home() / ".config" / "cloner.toml"
+
+    if not config_path.exists():
+        return {}
+
+    with open(config_path, "rb") as f:
+        return tomllib.load(f)
+
+
 def get_workspace() -> Path:
-    return Path(os.environ.get("CLONER_WORKSPACE", "~/p")).expanduser()
+    workspace = os.environ.get("CLONER_WORKSPACE")
+    if workspace:
+        return Path(workspace).expanduser()
+
+    config = load_config()
+    if "workspace" in config:
+        return Path(config["workspace"]).expanduser()
+
+    return Path("~/p").expanduser()
+
+
+def get_target_dir(url: str) -> Path:
+    hostname, path = parse_git_url_info(url)
+    config = load_config()
+
+    full_path = f"{hostname}/{path}" if hostname else path
+
+    # Try to find longest prefix match in config (excluding special keys)
+    prefixes = {k: v for k, v in config.items() if k != "workspace"}
+    for key in sorted(prefixes.keys(), key=len, reverse=True):
+        if full_path.startswith(key):
+            base = Path(prefixes[key]).expanduser()
+            relative = full_path[len(key) :].lstrip("/")
+            return base / relative
+
+    # Default logic
+    workspace = get_workspace()
+    rel_path = parse_git_url(url)
+    return workspace / rel_path
 
 
 def clone_or_cd(url: str) -> Path:
@@ -72,9 +124,7 @@ def clone_or_cd(url: str) -> Path:
     Returns the path to the repository.
     """
     url = normalize_url(url)
-    rel_path = parse_git_url(url)
-    workspace = get_workspace()
-    target_dir = workspace / rel_path
+    target_dir = get_target_dir(url)
 
     if target_dir.exists() and (target_dir / ".git").exists():
         return target_dir

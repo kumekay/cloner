@@ -10,7 +10,7 @@ Guidelines for AI agents working on this project.
 
 ## Tech Stack
 
-- Python 3.10+
+- Python 3.11+
 - No external runtime dependencies (stdlib only)
 - `uv` for package management and tool installation
 - `ruff` for linting and formatting
@@ -62,9 +62,22 @@ tests/
 
 ### Key Functions
 
-- `parse_git_url(url: str) -> Path`: Parses HTTPS/SSH URLs and returns the relative path for cloning
-- `get_workspace() -> Path`: Returns the workspace directory (from env or default `~/p`)
-- `clone_or_cd(url: str) -> Path`: Clones repo or returns path if exists
+- `parse_git_url_info(url: str) -> tuple[str | None, str]`: Extracts hostname and path from git URL.
+- `parse_git_url(url: str) -> Path`: Parses HTTPS/SSH URLs and returns the relative path for cloning (with hostname prefix for non-GitHub).
+- `load_config() -> dict[str, str]`: Loads configuration from `~/.config/cloner.toml`.
+- `get_target_dir(url: str) -> Path`: Determines the final destination path using config and workspace.
+- `get_workspace() -> Path`: Returns the workspace directory (from env or default `~/p`).
+- `clone_or_cd(url: str) -> Path`: Clones repo or returns path if exists.
+
+### Configuration Logic
+
+1. Parse URL to get `hostname` and `path`.
+2. Construct `full_path = f"{hostname}/{path}"` (or just `path` if no hostname).
+3. Find the longest key in `~/.config/cloner.toml` that is a prefix of `full_path`.
+4. If matched:
+   - Target = `config[key] / (full_path - key)`
+5. If no match:
+   - Use default `$CLONER_WORKSPACE` logic.
 
 ### Shell Integration
 
