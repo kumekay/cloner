@@ -72,6 +72,15 @@ def parse_git_url(url: str) -> Path:
     return Path(path)
 
 
+DEFAULT_CONFIG = """\
+workspace = "~/p"
+
+# Custom destination paths (examples):
+# "github.com/myorg" = "~/work"
+# "codeberg.org" = "~/projects/codeberg"
+"""
+
+
 def load_config() -> dict[str, str]:
     config_home = os.environ.get("XDG_CONFIG_HOME")
     if config_home:
@@ -80,7 +89,8 @@ def load_config() -> dict[str, str]:
         config_path = Path.home() / ".config" / "cloner.toml"
 
     if not config_path.exists():
-        return {}
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(DEFAULT_CONFIG)
 
     with open(config_path, "rb") as f:
         return tomllib.load(f)
