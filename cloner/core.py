@@ -75,9 +75,22 @@ def parse_git_url(url: str) -> Path:
 DEFAULT_CONFIG = """\
 workspace = "~/p"
 
+# Default git user for all repos (optional):
+# [git]
+# name = "Your Name"
+# email = "your@email.com"
+# signing_key = "ABCDEF1234567890"
+
 # Custom destination paths (examples):
 # "github.com/myorg" = "~/work"
 # "codeberg.org" = "~/projects/codeberg"
+
+# Per-prefix git user config (use table syntax):
+# ["github.com/work-org"]
+# path = "~/work"
+# git_name = "Work Name"
+# git_email = "work@email.com"
+# git_signing_key = "ABCDEF1234567890"
 """
 
 
@@ -108,24 +121,60 @@ def get_workspace() -> Path:
     return Path("~/p").expanduser()
 
 
-def get_target_dir(url: str) -> Path:
+def resolve_url(url: str) -> tuple[Path, dict[str, str]]:
+    """
+    Resolve a git URL to (target_dir, git_user_config).
+
+    git_user_config may contain "name", "email", and/or "signingKey" keys,
+    matching git config keys under [user].
+    """
     hostname, path = parse_git_url_info(url)
     config = load_config()
 
     full_path = f"{hostname}/{path}" if hostname else path
 
+    # Default git user config from [git] section
+    # Maps config file keys to git config keys (user.name, user.email, user.signingKey)
+    git_user: dict[str, str] = {}
+    git_section = config.get("git", {})
+    if isinstance(git_section, dict):
+        for key in ("name", "email"):
+            if key in git_section:
+                git_user[key] = git_section[key]
+        if "signing_key" in git_section:
+            git_user["signingKey"] = git_section["signing_key"]
+
     # Try to find longest prefix match in config (excluding special keys)
-    prefixes = {k: v for k, v in config.items() if k != "workspace"}
+    special_keys = {"workspace", "git"}
+    prefixes = {k: v for k, v in config.items() if k not in special_keys}
     for key in sorted(prefixes.keys(), key=len, reverse=True):
         if full_path.startswith(key):
-            base = Path(prefixes[key]).expanduser()
+            entry = prefixes[key]
+            if isinstance(entry, str):
+                base = Path(entry).expanduser()
+            else:
+                base = Path(entry["path"]).expanduser()
+                for git_key in ("name", "email"):
+                    if f"git_{git_key}" in entry:
+                        git_user[git_key] = entry[f"git_{git_key}"]
+                if "git_signing_key" in entry:
+                    git_user["signingKey"] = entry["git_signing_key"]
             relative = full_path[len(key) :].lstrip("/")
-            return base / relative
+            return base / relative, git_user
 
     # Default logic
     workspace = get_workspace()
     rel_path = parse_git_url(url)
-    return workspace / rel_path
+    return workspace / rel_path, git_user
+
+
+def configure_git_user(repo_path: Path, git_user: dict[str, str]) -> None:
+    """Set local git user.name, user.email, and user.signingKey in the repo."""
+    for key, value in git_user.items():
+        subprocess.run(
+            ["git", "-C", str(repo_path), "config", f"user.{key}", value],
+            check=True,
+        )
 
 
 def clone_or_cd(url: str) -> Path:
@@ -134,9 +183,11 @@ def clone_or_cd(url: str) -> Path:
     Returns the path to the repository.
     """
     url = normalize_url(url)
-    target_dir = get_target_dir(url)
+    target_dir, git_user = resolve_url(url)
 
     if target_dir.exists() and (target_dir / ".git").exists():
+        if git_user:
+            configure_git_user(target_dir, git_user)
         return target_dir
 
     target_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -145,5 +196,8 @@ def clone_or_cd(url: str) -> Path:
 
     if result.returncode != 0:
         raise RuntimeError("git clone failed")
+
+    if git_user:
+        configure_git_user(target_dir, git_user)
 
     return target_dir
