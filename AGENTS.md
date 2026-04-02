@@ -57,7 +57,8 @@ cloner/
 ├── cli.py         # Argument parsing, --init shell function output
 └── core.py        # URL parsing, clone logic
 tests/
-└── test_core.py   # Unit tests for URL parsing
+├── test_core.py   # Unit tests for URL parsing
+└── test_config.py # Tests for config mapping, git user config
 ```
 
 ### Key Functions
@@ -65,19 +66,23 @@ tests/
 - `parse_git_url_info(url: str) -> tuple[str | None, str]`: Extracts hostname and path from git URL.
 - `parse_git_url(url: str) -> Path`: Parses HTTPS/SSH URLs and returns the relative path for cloning (with hostname prefix for non-GitHub).
 - `load_config() -> dict[str, str]`: Loads configuration from `~/.config/cloner.toml`.
-- `get_target_dir(url: str) -> Path`: Determines the final destination path using config and workspace.
+- `resolve_url(url: str) -> tuple[Path, dict[str, str]]`: Resolves URL to `(target_dir, git_user_config)`. Handles prefix matching and git user config extraction.
+- `configure_git_user(repo_path: Path, git_user: dict[str, str])`: Sets local `user.name`/`user.email`/`user.signingKey` in a repo.
 - `get_workspace() -> Path`: Returns the workspace directory (from env or default `~/p`).
-- `clone_or_cd(url: str) -> Path`: Clones repo or returns path if exists.
+- `clone_or_cd(url: str) -> Path`: Clones repo or returns path if exists. Applies git user config if configured.
 
 ### Configuration Logic
 
 1. Parse URL to get `hostname` and `path`.
 2. Construct `full_path = f"{hostname}/{path}"` (or just `path` if no hostname).
-3. Find the longest key in `~/.config/cloner.toml` that is a prefix of `full_path`.
-4. If matched:
-   - Target = `config[key] / (full_path - key)`
-5. If no match:
+3. Collect default git user from `[git]` section (optional `name`, `email`).
+4. Find the longest key in `~/.config/cloner.toml` that is a prefix of `full_path`.
+5. If matched:
+   - If value is a string: Target = `value / (full_path - key)`
+   - If value is a table: Target = `entry["path"] / (full_path - key)`, override git user with `git_name`/`git_email`/`git_signing_key` if present.
+6. If no match:
    - Use default `$CLONER_WORKSPACE` logic.
+7. After clone (or on cd to existing repo), apply git user config locally if any was resolved.
 
 ### Shell Integration
 

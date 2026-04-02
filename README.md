@@ -98,6 +98,31 @@ With this config:
 
 The tool uses the longest prefix match to determine the destination.
 
+### Per-Repository Git User Config
+
+You can configure `user.name` and `user.email` that get set locally in each cloned repository. This is useful when you use different identities for different hosts or organizations.
+
+**Global default** (applies to all repos):
+
+```toml
+[git]
+name = "Your Name"
+email = "your@email.com"
+signing_key = "ABCDEF1234567890"
+```
+
+**Per-prefix override** (use table syntax instead of a simple string value):
+
+```toml
+["github.com/work-org"]
+path = "~/work"
+git_name = "Work Name"
+git_email = "work@corp.com"
+git_signing_key = "WORKKEY123"
+```
+
+Per-prefix values override the global `[git]` defaults. The config sets `user.name`, `user.email`, and `user.signingKey` locally in each repo. It is applied both on fresh clones and when cd-ing into existing repos, so config changes take effect immediately.
+
 ## Supported URL Formats
 
 | Format | Example |
