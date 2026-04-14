@@ -1,6 +1,8 @@
 import os
 import re
+import shutil
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -177,6 +179,76 @@ def configure_git_user(repo_path: Path, git_user: dict[str, str]) -> None:
         )
 
 
+def detect_hook_manager(repo_path: Path) -> str | None:
+    """Detect which hook manager is used in the repo.
+
+    Checks in order: lefthook, pre-commit, husky.
+    Returns the first match or None.
+    """
+    if (repo_path / "lefthook.yml").exists() or (repo_path / "lefthook.toml").exists():
+        return "lefthook"
+    if (repo_path / ".pre-commit-config.yaml").exists():
+        return "pre-commit"
+    if (repo_path / ".husky").is_dir():
+        return "husky"
+    return None
+
+
+def install_hooks(repo_path: Path) -> None:
+    """Install hooks if a supported hook manager is detected.
+
+    Skips if hooks are already installed, the tool is not on PATH,
+    or husky's core.hooksPath is already configured.
+    Prints a warning to stderr on failure.
+    """
+    manager = detect_hook_manager(repo_path)
+    if manager is None:
+        return
+
+    # Check if hooks are already installed in .git/hooks/
+    pre_commit_hook = repo_path / ".git" / "hooks" / "pre-commit"
+    if pre_commit_hook.exists() and pre_commit_hook.stat().st_size > 0:
+        return
+
+    # For husky, also check if core.hooksPath is already configured
+    if manager == "husky":
+        git_config = repo_path / ".git" / "config"
+        if git_config.exists() and "hooksPath" in git_config.read_text():
+            return
+
+    try:
+        if manager == "lefthook" and shutil.which("lefthook"):
+            result = subprocess.run(
+                ["lefthook", "install"], cwd=str(repo_path), check=False
+            )
+            if result.returncode != 0:
+                print(
+                    f"Warning: lefthook install failed (exit {result.returncode})",
+                    file=sys.stderr,
+                )
+        elif manager == "pre-commit" and shutil.which("pre-commit"):
+            result = subprocess.run(
+                ["pre-commit", "install"], cwd=str(repo_path), check=False
+            )
+            if result.returncode != 0:
+                print(
+                    f"Warning: pre-commit install failed (exit {result.returncode})",
+                    file=sys.stderr,
+                )
+        elif manager == "husky" and shutil.which("npx"):
+            result = subprocess.run(["npx", "husky"], cwd=str(repo_path), check=False)
+            if result.returncode != 0:
+                print(
+                    f"Warning: npx husky failed (exit {result.returncode})",
+                    file=sys.stderr,
+                )
+    except Exception as e:
+        print(
+            f"Warning: hook installation failed: {e}",
+            file=sys.stderr,
+        )
+
+
 def clone_or_cd(url: str) -> Path:
     """
     Clone a repository or return path if it already exists.
@@ -188,6 +260,7 @@ def clone_or_cd(url: str) -> Path:
     if target_dir.exists() and (target_dir / ".git").exists():
         if git_user:
             configure_git_user(target_dir, git_user)
+        install_hooks(target_dir)
         return target_dir
 
     target_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -199,5 +272,7 @@ def clone_or_cd(url: str) -> Path:
 
     if git_user:
         configure_git_user(target_dir, git_user)
+
+    install_hooks(target_dir)
 
     return target_dir

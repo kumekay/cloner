@@ -62,6 +62,23 @@ clone ssh://git@gitea.example.com:2222/myorg/myrepo.git
 
 If the repository already exists locally, `clone` will just `cd` to it without re-cloning.
 
+## Automatic Hook Installation
+
+When cloning a repository (or cd-ing to an existing one), `clone` automatically detects and installs pre-commit hooks for the following hook managers:
+
+| Manager | Detection | Install Command |
+|---------|-----------|-----------------|
+| [lefthook](https://github.com/evilmartians/lefthook) | `lefthook.yml` or `lefthook.toml` | `lefthook install` |
+| [pre-commit](https://github.com/pre-commit/pre-commit) | `.pre-commit-config.yaml` | `pre-commit install` |
+| [husky](https://github.com/typicode/husky) | `.husky/` directory | `npx husky` |
+
+Hook installation is skipped when:
+- Hooks are already installed (`.git/hooks/pre-commit` exists)
+- The required tool binary is not found on `PATH`
+- For husky: `core.hooksPath` is already configured
+
+Hook installation failures are reported as warnings to stderr but do not block the clone/cd operation.
+
 ## Configuration
 
 The tool can be configured via environment variables or a configuration file in `~/.config/cloner.toml`.
@@ -142,7 +159,8 @@ Works with GitHub, GitLab, Gitea (including self-hosted), and any other git host
 2. Constructs the target directory: `$CLONER_WORKSPACE/<path>` for GitHub, `$CLONER_WORKSPACE/<hostname>/<path>` for others
 3. If directory exists with `.git` inside → just return the path
 4. Otherwise → `git clone <url> <target>` and return the path
-5. The shell function handles the `cd`
+5. Detects and installs pre-commit hooks if a supported hook manager is found
+6. The shell function handles the `cd`
 
 ## Development
 

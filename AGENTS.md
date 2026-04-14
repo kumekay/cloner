@@ -55,10 +55,11 @@ uv run pre-commit run --all-files
 cloner/
 ├── __init__.py    # Version
 ├── cli.py         # Argument parsing, --init shell function output
-└── core.py        # URL parsing, clone logic
+└── core.py        # URL parsing, clone logic, hook installation
 tests/
 ├── test_core.py   # Unit tests for URL parsing
-└── test_config.py # Tests for config mapping, git user config
+├── test_config.py # Tests for config mapping, git user config
+└── test_hooks.py  # Tests for hook manager detection and installation
 ```
 
 ### Key Functions
@@ -68,8 +69,10 @@ tests/
 - `load_config() -> dict[str, str]`: Loads configuration from `~/.config/cloner.toml`.
 - `resolve_url(url: str) -> tuple[Path, dict[str, str]]`: Resolves URL to `(target_dir, git_user_config)`. Handles prefix matching and git user config extraction.
 - `configure_git_user(repo_path: Path, git_user: dict[str, str])`: Sets local `user.name`/`user.email`/`user.signingKey` in a repo.
+- `detect_hook_manager(repo_path: Path) -> str | None`: Detects lefthook, pre-commit, or husky in a repo.
+- `install_hooks(repo_path: Path)`: Installs pre-commit hooks if a supported hook manager is detected and hooks aren't already set up.
 - `get_workspace() -> Path`: Returns the workspace directory (from env or default `~/p`).
-- `clone_or_cd(url: str) -> Path`: Clones repo or returns path if exists. Applies git user config if configured.
+- `clone_or_cd(url: str) -> Path`: Clones repo or returns path if exists. Applies git user config and installs hooks if configured.
 
 ### Configuration Logic
 
