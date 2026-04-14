@@ -162,6 +162,40 @@ def test_install_hooks_no_manager(tmp_path, mock_subprocess):
     assert mock_subprocess == []
 
 
+def test_install_hooks_warns_on_nonzero_exit(tmp_path, monkeypatch, capsys):
+    """A warning is printed to stderr when the install command fails."""
+    (tmp_path / ".git" / "hooks").mkdir(parents=True)
+    (tmp_path / "lefthook.yml").touch()
+    monkeypatch.setattr(shutil, "which", lambda cmd: "/usr/bin/lefthook")
+
+    class FailResult:
+        returncode = 1
+
+    monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: FailResult())
+
+    install_hooks(tmp_path)
+
+    captured = capsys.readouterr()
+    assert "Warning: lefthook install failed" in captured.err
+
+
+def test_install_hooks_warns_on_exception(tmp_path, monkeypatch, capsys):
+    """A warning is printed to stderr when subprocess.run raises."""
+    (tmp_path / ".git" / "hooks").mkdir(parents=True)
+    (tmp_path / "lefthook.yml").touch()
+    monkeypatch.setattr(shutil, "which", lambda cmd: "/usr/bin/lefthook")
+
+    def raise_error(args, **kwargs):
+        raise OSError("spawn failed")
+
+    monkeypatch.setattr(subprocess, "run", raise_error)
+
+    install_hooks(tmp_path)
+
+    captured = capsys.readouterr()
+    assert "Warning: hook installation failed" in captured.err
+
+
 def test_install_hooks_passes_cwd(tmp_path, monkeypatch, mock_subprocess):
     """The install command is run with cwd set to the repo path."""
     (tmp_path / ".git" / "hooks").mkdir(parents=True)

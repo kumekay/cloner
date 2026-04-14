@@ -77,7 +77,7 @@ Hook installation is skipped when:
 - The required tool binary is not found on `PATH`
 - For husky: `core.hooksPath` is already configured
 
-Hook installation failures are silently ignored to avoid blocking the clone/cd operation.
+Hook installation failures are reported as warnings to stderr but do not block the clone/cd operation.
 
 ## Configuration
 

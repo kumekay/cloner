@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -198,7 +199,7 @@ def install_hooks(repo_path: Path) -> None:
 
     Skips if hooks are already installed, the tool is not on PATH,
     or husky's core.hooksPath is already configured.
-    Failures are silently ignored.
+    Prints a warning to stderr on failure.
     """
     manager = detect_hook_manager(repo_path)
     if manager is None:
@@ -217,13 +218,35 @@ def install_hooks(repo_path: Path) -> None:
 
     try:
         if manager == "lefthook" and shutil.which("lefthook"):
-            subprocess.run(["lefthook", "install"], cwd=str(repo_path), check=False)
+            result = subprocess.run(
+                ["lefthook", "install"], cwd=str(repo_path), check=False
+            )
+            if result.returncode != 0:
+                print(
+                    f"Warning: lefthook install failed (exit {result.returncode})",
+                    file=sys.stderr,
+                )
         elif manager == "pre-commit" and shutil.which("pre-commit"):
-            subprocess.run(["pre-commit", "install"], cwd=str(repo_path), check=False)
+            result = subprocess.run(
+                ["pre-commit", "install"], cwd=str(repo_path), check=False
+            )
+            if result.returncode != 0:
+                print(
+                    f"Warning: pre-commit install failed (exit {result.returncode})",
+                    file=sys.stderr,
+                )
         elif manager == "husky" and shutil.which("npx"):
-            subprocess.run(["npx", "husky"], cwd=str(repo_path), check=False)
-    except Exception:
-        pass  # Don't fail clone/cd if hook installation fails
+            result = subprocess.run(["npx", "husky"], cwd=str(repo_path), check=False)
+            if result.returncode != 0:
+                print(
+                    f"Warning: npx husky failed (exit {result.returncode})",
+                    file=sys.stderr,
+                )
+    except Exception as e:
+        print(
+            f"Warning: hook installation failed: {e}",
+            file=sys.stderr,
+        )
 
 
 def clone_or_cd(url: str) -> Path:
