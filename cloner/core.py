@@ -181,7 +181,8 @@ def configure_git_user(repo_path: Path, git_user: dict[str, str]) -> None:
 def detect_hook_manager(repo_path: Path) -> str | None:
     """Detect which hook manager is used in the repo.
 
-    Returns "lefthook", "pre-commit", or "husky" if detected, else None.
+    Checks in order: lefthook, pre-commit, husky.
+    Returns the first match or None.
     """
     if (repo_path / "lefthook.yml").exists() or (repo_path / "lefthook.toml").exists():
         return "lefthook"
@@ -193,7 +194,12 @@ def detect_hook_manager(repo_path: Path) -> str | None:
 
 
 def install_hooks(repo_path: Path) -> None:
-    """Install hooks if a supported hook manager is detected."""
+    """Install hooks if a supported hook manager is detected.
+
+    Skips if hooks are already installed, the tool is not on PATH,
+    or husky's core.hooksPath is already configured.
+    Failures are silently ignored.
+    """
     manager = detect_hook_manager(repo_path)
     if manager is None:
         return
