@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -194,6 +195,47 @@ def test_install_hooks_warns_on_exception(tmp_path, monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "Warning: hook installation failed" in captured.err
+
+
+@pytest.mark.parametrize(
+    "filename,is_dir,which_cmd",
+    [
+        ("lefthook.yml", False, "lefthook"),
+        (".pre-commit-config.yaml", False, "pre-commit"),
+        (".husky", True, "npx"),
+    ],
+)
+def test_install_hooks_redirects_stdout_to_stderr(
+    tmp_path, monkeypatch, filename, is_dir, which_cmd
+):
+    """Hook installer stdout is redirected to stderr.
+
+    The shell wrapper captures `clone`'s stdout to cd into the resulting dir,
+    so any extra output on stdout (e.g. `pre-commit installed at ...`) breaks
+    the cd. Hook installer output must go to stderr instead.
+    """
+    (tmp_path / ".git" / "hooks").mkdir(parents=True)
+    if is_dir:
+        (tmp_path / filename).mkdir()
+    else:
+        (tmp_path / filename).touch()
+    monkeypatch.setattr(shutil, "which", lambda cmd: f"/usr/bin/{which_cmd}")
+
+    captured_kwargs = []
+
+    class MockResult:
+        returncode = 0
+
+    def mock_run(args, **kwargs):
+        captured_kwargs.append(kwargs)
+        return MockResult()
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    install_hooks(tmp_path)
+
+    assert len(captured_kwargs) == 1
+    assert captured_kwargs[0].get("stdout") is sys.stderr
 
 
 def test_install_hooks_passes_cwd(tmp_path, monkeypatch, mock_subprocess):
