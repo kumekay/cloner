@@ -216,10 +216,15 @@ def install_hooks(repo_path: Path) -> None:
         if git_config.exists() and "hooksPath" in git_config.read_text():
             return
 
+    # Redirect stdout to stderr so installer output doesn't pollute our stdout —
+    # the shell wrapper from `clone --init` captures stdout to cd into the repo.
     try:
         if manager == "lefthook" and shutil.which("lefthook"):
             result = subprocess.run(
-                ["lefthook", "install"], cwd=str(repo_path), check=False
+                ["lefthook", "install"],
+                cwd=str(repo_path),
+                check=False,
+                stdout=sys.stderr,
             )
             if result.returncode != 0:
                 print(
@@ -228,7 +233,10 @@ def install_hooks(repo_path: Path) -> None:
                 )
         elif manager == "pre-commit" and shutil.which("pre-commit"):
             result = subprocess.run(
-                ["pre-commit", "install"], cwd=str(repo_path), check=False
+                ["pre-commit", "install"],
+                cwd=str(repo_path),
+                check=False,
+                stdout=sys.stderr,
             )
             if result.returncode != 0:
                 print(
@@ -236,7 +244,12 @@ def install_hooks(repo_path: Path) -> None:
                     file=sys.stderr,
                 )
         elif manager == "husky" and shutil.which("npx"):
-            result = subprocess.run(["npx", "husky"], cwd=str(repo_path), check=False)
+            result = subprocess.run(
+                ["npx", "husky"],
+                cwd=str(repo_path),
+                check=False,
+                stdout=sys.stderr,
+            )
             if result.returncode != 0:
                 print(
                     f"Warning: npx husky failed (exit {result.returncode})",
